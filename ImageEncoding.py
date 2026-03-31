@@ -8,6 +8,7 @@ from google.colab import drive
 drive.mount('/content/drive', force_remount=True)
 
 DATA_DIR = '/content/drive/MyDrive/TimeSeriesDeepLearning_FIM601/kaggle_data/optiver-realized-volatility-prediction'
+DIR = '/content/data'
 rng = np.random.default_rng()
 
 class OrderFlowDataset(Dataset):
@@ -16,9 +17,13 @@ class OrderFlowDataset(Dataset):
         self.index_map = self.target[['stock_id', 'time_id']].to_numpy()
         self.target = self.target.to_numpy()
 
-        self.book_path = book_path
-        self.trade_path = trade_path
         self.transform = transform
+
+        full_book = pd.read_parquet(book_path)
+        full_trade = pd.read_parquet(trade_path)
+
+        self.books = {k : v for k, v in full_book.groupby(['stock_id', 'time_id'])}
+        self.trades = {k : v for k, v in full_trade.groupby(['stock_id', 'time_id'])}
 
     def __len__(self):
         return len(self.index_map)
@@ -28,8 +33,8 @@ class OrderFlowDataset(Dataset):
             idx = idx.tolist()
 
         stock_id, time_id = self.index_map[idx]
-        book_data = pd.read_parquet(f"{self.book_path}/stock_id={stock_id}", filters=[('time_id', '==', time_id)])
-        trade_data = pd.read_parquet(f"{self.trade_path}/stock_id={stock_id}", filters=[('time_id', '==', time_id)])
+        book_data = self.books.get((stock_id, time_id), pd.DataFrame())
+        trade_data = self.trades.get((stock_id, time_id), pd.DataFrame())
         target = self.target[idx, 2]
 
         sample = {"book": book_data, "trade": trade_data, "r_vol": target}
