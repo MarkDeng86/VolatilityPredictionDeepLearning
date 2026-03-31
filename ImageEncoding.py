@@ -54,6 +54,8 @@ class ToImage(object):
         book, trade, r_vol = sample["book"], sample["trade"], sample["r_vol"]
         n_time, n_price, n_channels = self.output_size
         image = np.zeros((n_time, n_price, n_channels), dtype=np.int32)
+        if book.empty:
+            return {"image": image, "r_vol": r_vol}
 
         # Compute per-sample bounds when set to auto.
         if self.bounds == "auto":
