@@ -45,7 +45,7 @@ class OrderFlowDataset(Dataset):
         return sample
 
 class ToImage(object):
-    def __init__(self, output_size=(600, 600, 4), bounds="auto", pad = True):
+    def __init__(self, output_size=(600, 160, 3), bounds="auto", pad = True):
         self.output_size = output_size
         self.bounds = bounds
         self.pad = pad
@@ -53,7 +53,7 @@ class ToImage(object):
     def __call__(self, sample):
         book, trade, r_vol = sample["book"], sample["trade"], sample["r_vol"]
         n_time, n_price, n_channels = self.output_size
-        image = np.zeros((n_time, n_price, n_channels), dtype=np.int32)
+        image = np.zeros((n_time, n_price, n_channels), dtype=np.float32)
         if book.empty:
             return {"image": image, "r_vol": r_vol}
 
@@ -83,10 +83,10 @@ class ToImage(object):
 
         sec = book["seconds_in_bucket"].to_numpy(dtype=np.int32)
 
-        bs1 = book["bid_size1"].to_numpy(dtype=np.int32)
-        bs2 = book["bid_size2"].to_numpy(dtype=np.int32)
-        as1 = book["ask_size1"].to_numpy(dtype=np.int32)
-        as2 = book["ask_size2"].to_numpy(dtype=np.int32)
+        bs1 = book["bid_size1"].to_numpy(dtype=np.float32)
+        bs2 = book["bid_size2"].to_numpy(dtype=np.float32)
+        as1 = book["ask_size1"].to_numpy(dtype=np.float32)
+        as2 = book["ask_size2"].to_numpy(dtype=np.float32)
 
         np.add.at(image, (sec, bid_bin_1, 0), bs1)
         np.add.at(image, (sec, bid_bin_2, 0), bs2)
@@ -97,16 +97,19 @@ class ToImage(object):
         if not trade.empty:
             trade_sec = trade["seconds_in_bucket"].to_numpy(dtype=np.int32)
             trade_bin = np.searchsorted(price_edges, trade["price"].to_numpy(), side="right") - 1
-            trade_size = trade["size"].to_numpy(dtype=np.int32)
-            trade_oc = trade["order_count"].to_numpy(dtype=np.int32)
+            trade_size = trade["size"].to_numpy(dtype=np.float32)
+            trade_oc = trade["order_count"].to_numpy(dtype=np.float32)
+            oc_grid = np.zeros((n_time, n_price), dtype=np.float32)
 
             np.add.at(image[:, :, 2], (trade_sec, trade_bin), trade_size)
+            np.add.at(oc_grid, (trade_sec, trade_bin), trade_oc)
             if self.pad:
                 left_mask = trade_bin - 1 >= 0
                 right_mask = trade_bin + 1 < n_price
                 np.add.at(image[:, :, 2], (trade_sec[left_mask], trade_bin[left_mask] - 1), trade_size[left_mask])
                 np.add.at(image[:, :, 2], (trade_sec[right_mask], trade_bin[right_mask] + 1), trade_size[right_mask])
-            np.add.at(image[:, :, 3], (trade_sec, trade_bin), trade_oc)
+
+            np.divide(image[:, :, 2], oc_grid, out=image[:, :, 2], where=oc_grid > 0)
         
 
         return {"image": image, "r_vol": r_vol}

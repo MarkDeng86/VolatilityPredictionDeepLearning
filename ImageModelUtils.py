@@ -9,13 +9,18 @@ class OrderFlowRegressor(nn.Module):
         self.model = timm.create_model(
             'vit_base_patch16_224', 
             pretrained=True, 
-            in_chans=4, 
+            in_chans=3, 
             num_classes=1, 
             dynamic_img_size=True
         )
 
     def forward(self, x):
         # x is expected to be (B, C, H, W)
+        # Log-transform the input
+        x = torch.log1p(x)
+        mean = x.mean(dim = [-2, -1], keepdim=True)
+        std = x.std(dim = [-2, -1], keepdim=True) + 1e-6
+        x = (x - mean) / std
         H, W = x.shape[2], x.shape[3]
         
         # Calculate padding needed to make H and W divisible by 16
@@ -24,6 +29,7 @@ class OrderFlowRegressor(nn.Module):
         
         # F.pad expects (pad_left, pad_right, pad_top, pad_bottom)
         x = F.pad(x, (0, pad_w, 0, pad_h)) 
+
         
         return self.model(x).squeeze(-1)
 
