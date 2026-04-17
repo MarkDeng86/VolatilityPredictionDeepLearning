@@ -4,8 +4,6 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
 
-from google.colab import drive
-drive.mount('/content/drive', force_remount=True)
 
 DATA_DIR = '/content/drive/MyDrive/TimeSeriesDeepLearning_FIM601/kaggle_data/optiver-realized-volatility-prediction'
 DIR = '/content/data'

@@ -45,7 +45,7 @@ train_dataset, val_dataset = torch.utils.data.random_split(train_dataset, [train
 
 # %%
 hyperparameters = {
-    "batch_size": 256, 
+    "batch_size": 512, 
     "num_workers": os.cpu_count() - 1 if os.cpu_count() else 0, 
     "pin_memory": True, 
     "prefetch_factor": 2
@@ -61,8 +61,8 @@ def main():
     muon_params = [p for p in model.parameters() if p.ndim == 2]
     adamw_params = [p for p in model.parameters() if p.ndim != 2]
 
-    optimizer_adamw = optim.AdamW(adamw_params, lr=15e-6, weight_decay=0.05)
-    optimizer_muon = optim.Muon(muon_params, lr=0.0005, momentum=0.95)
+    optimizer_adamw = optim.AdamW(adamw_params, lr=3e-5, weight_decay=0.05)
+    optimizer_muon = optim.Muon(muon_params, lr=0.001, momentum=0.95)
 
     num_epochs = 20
     total_steps = len(train_loader) * num_epochs
@@ -71,7 +71,7 @@ def main():
 
     def build_scheduler(optimizer):
         warmup = LinearLR(optimizer, start_factor=0.01, end_factor=1.0, total_iters=warmup_steps)
-        cosine = CosineAnnealingLR(optimizer, T_max=decay_steps, eta_min=1e-6)
+        cosine = CosineAnnealingLR(optimizer, T_max=decay_steps)
         return SequentialLR(optimizer, schedulers=[warmup, cosine], milestones=[warmup_steps])
 
     scheduler_adamw = build_scheduler(optimizer_adamw)
@@ -151,7 +151,8 @@ def main():
                     
                     with autocast('cuda', dtype=torch.bfloat16):
                         outputs = model(images)
-                        val_loss = criterion(outputs, targets)
+
+                    val_loss = criterion(outputs.float(), targets)
                         
                     running_val_loss += val_loss.item() * images.size(0)
 
