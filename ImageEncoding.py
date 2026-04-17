@@ -5,23 +5,26 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 
 
-DATA_DIR = '/content/drive/MyDrive/TimeSeriesDeepLearning_FIM601/kaggle_data/optiver-realized-volatility-prediction'
-DIR = '/content/data'
 rng = np.random.default_rng()
 
 class OrderFlowDataset(Dataset):
-    def __init__(self, target_csv_path: str, book_path: str, trade_path: str, transform=None):
-        self.target = pd.read_csv(target_csv_path)
-        self.index_map = self.target[['stock_id', 'time_id']].to_numpy()
-        self.target = self.target.to_numpy()
-
-        self.transform = transform
-
+    def __init__(self, target_csv_path, book_path: str, trade_path: str, transform=None):
         full_book = pd.read_parquet(book_path)
         full_trade = pd.read_parquet(trade_path)
 
         self.books = {k : v for k, v in full_book.groupby(['stock_id', 'time_id'])}
         self.trades = {k : v for k, v in full_trade.groupby(['stock_id', 'time_id'])}
+
+        if target_csv_path is not None:
+            self.target = pd.read_csv(target_csv_path)
+            self.index_map = self.target[['stock_id', 'time_id']].to_numpy()
+            self.target = self.target.to_numpy()
+        else: 
+            self.target = None
+            self.index_map = list(self.books.keys())
+
+        self.transform = transform
+
 
     def __len__(self):
         return len(self.index_map)
@@ -33,7 +36,7 @@ class OrderFlowDataset(Dataset):
         stock_id, time_id = self.index_map[idx]
         book_data = self.books.get((stock_id, time_id), pd.DataFrame())
         trade_data = self.trades.get((stock_id, time_id), pd.DataFrame())
-        target = self.target[idx, 2]
+        target = self.target[idx, 2] if self.target is not None else None
 
         sample = {"book": book_data, "trade": trade_data, "r_vol": target}
 
