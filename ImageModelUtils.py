@@ -44,3 +44,11 @@ class RelativeHuberLoss(nn.Module):
         target_ratio = torch.ones_like(ratio)
         return F.huber_loss(ratio, target_ratio, delta=self.delta, reduction='mean')
 
+class RelativeMSELoss(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, pred, target):
+        ratio = pred / target
+        target_ratio = torch.ones_like(ratio)
+        return F.mse_loss(ratio, target_ratio)
