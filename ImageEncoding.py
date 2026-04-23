@@ -39,10 +39,10 @@ class OrderFlowDataset(Dataset):
         target = self.target[idx, 2] if self.target is not None else None
 
         sample = {"book": book_data, "trade": trade_data, "r_vol": target}
-
         if self.transform:
             sample = self.transform(sample)
-        
+        sample["stock_id"] = stock_id
+        sample["time_id"] = time_id
         return sample
 
 class ToImage(object):
@@ -113,4 +113,4 @@ class ToImage(object):
             np.divide(image[:, :, 2], oc_grid, out=image[:, :, 2], where=oc_grid > 0)
         
 
-        return {"image": image, "r_vol": r_vol}
+        return {"image": image, "r_vol": r_vol, }
